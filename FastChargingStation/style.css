@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .content-auto {
+    content-visibility: auto;
+  }
+  .pixel-font {
+    font-size: clamp(1rem, 3vw, 1.25rem);
+  }
+  .status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+  .power-bar {
+    height: 8px;
+    border-radius: 4px;
+    background: linear-gradient(to right, #3b82f6, #10b981);
+  }
+  .tab-indicator {
+    height: 2px;
+    width: 33%;
+    transition: all 0.3s ease;
+  }
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 2px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 1px;
+  }
+}

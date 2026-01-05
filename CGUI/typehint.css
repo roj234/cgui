@@ -1,0 +1,29 @@
+
+.cg-screen {}
+
+[cg-bind] {}
+[cg-dataType] {}
+
+.cg-string {}
+.cg-number {}
+[cg-padding] {}
+[cg-alphabet] {}
+[cg-renderer] {}
+
+.cg-image {}
+[cg-if-] {}
+[cg-else] {}
+
+.cg-group {}
+[cg-if] {}
+
+.cg-bar {}
+[cg-dir] {}
+
+script[type="text/c"] [cg-bufferSize] {}
+
+/* management */
+.cg-render [class*="cg-"], .cg-hide { visibility: hidden; }
+.cg-render .cg-hide, .cg-demo .cg-hide { visibility: visible; }
+.cg-render .cg-group .cg-hide { visibility: hidden; }
+.hide { visibility: hidden; }

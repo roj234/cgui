@@ -1,0 +1,20 @@
+{
+	"name": "cgui",
+	"version": "0.0.1",
+	"type": "module",
+	"scripts": {
+		"build": "node CGUI/main.js"
+	},
+	"bin": "CGUI/main.js",
+	"dependencies": {
+		"gbk.js": "^0.3.0",
+		"selenium-webdriver": "^4.39.0",
+		"upng-js": "^2.1.0"
+	},
+	"overrides": {
+		"setimmediate": "file:./CGUI/shims/empty-module",
+		"readable-stream": "file:./CGUI/shims/empty-module",
+		"lie": "file:./CGUI/shims/empty-module",
+		"@bazel/runfiles": "file:./CGUI/shims/empty-module"
+	}
+}

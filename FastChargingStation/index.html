@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>桌面快充站监控界面</title>
+  <link href="dependencies/font-awesome.min.css" rel="stylesheet" />
+  <link href="style.css" rel="stylesheet" />
+  <link href="../CGUI/typehint.css" rel="stylesheet" />
+  <script src="dependencies/tailwind-3.4.17.js"></script>
+  <script src="script.js"></script>
+</head>
+<body class="bg-dark text-light font-mono flex items-center justify-center min-h-screen">
+
+<div class="flex flex-col p-1">
+  <div class="flex-1 text-center">开机初始化</div>
+  <div class="w-[160px] h-[128px] border-2 border-gray-700 rounded-lg p-1 flex flex-col" id="BootScreen">
+
+  </div>
+</div>
+
+
+<div class="flex flex-col p-1">
+  <div class="flex-1 text-center">主界面</div>
+  <div class="bg-dark w-[160px] h-[128px] border-2 border-gray-700 rounded-lg p-1 flex flex-col cg-screen" id="MainScreen">
+    <script type="text/c" class="cg-code">
+      SW3538_Status* ch = &status.channel[activeChannel >> 1];
+      uint16_t current = ((activeChannel&1) ? ch->usbA_cur : ch->usbC_cur);
+      uint16_t currentMax = ((activeChannel&1) ? ch->usbA_curMax : ch->usbC_curMax);
+    </script>
+    <div class="flex justify-between items-center">
+      <div class="flex items-center">
+        <i class="fa fa-bolt text-accent mr-1"></i>
+        <span class="text-xs font-bold">桌面快充站</span>
+      </div>
+      <div class="flex items-center">
+        <span class="text-xs cg-string" cg-alphabet="QC2.0QC3.0QC3+FCPSCPPDPPSPE1.1PE2.0VOOC1.0VOOC4.0SVOOCSFCPAFCTFCP" cg-bind="ch->protocolName" cg-padding="right">VOOC4.0</span>
+        <span class="status-indicator ml-1 bg-green-500 cg-image" cg-if-1="true|bg-red-500" cg-else="bg-green-500" cg-bind="CG_isEmptyString(ch->protocolName)" cg-dataType="bool"></span>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-1">
+      <div class="bg-gray-800 rounded p-1 text-center">
+        <div class="text-xs text-gray-400">电压</div>
+        <div class="text-primary text-base font-bold"><span class="cg-number" cg-padding="center" cg-bind="ch->vout" cg-dataType="uint16_t">20.000</span><span class="cg-hide">V</span></div>
+      </div>
+
+      <div class="bg-gray-800 rounded p-1 text-center">
+        <div class="text-xs text-gray-400">电流</div>
+        <div class="text-primary text-base font-bold"><span class="cg-number" cg-padding="center" cg-bind="current" cg-dataType="uint16_t">7.000</span><span class="cg-hide">A</span></div>
+      </div>
+    </div>
+
+    <div class="rounded" style="margin-top: -0.25rem">
+      <div class="flex justify-between items-center mb-1">
+        <span class="text-xs text-gray-400">功率</span>
+        <span class="text-primary font-bold"><span id="myPower" class="cg-number" cg-padding="right" cg-bind="status.power[activeChannel] / 100" cg-dataType="uint16_t">140.0</span><span class="cg-hide">W</span></span>
+      </div>
+      <!-- 注意，进度条结构是硬编码的两层嵌套 且只有一个子元素 -->
+      <div class="w-full bg-gray-700 rounded-full cg-bar" cg-bind="current * (uint32_t)148 / currentMax" cg-dir="right">
+        <div class="power-bar w-[46%]"></div>
+      </div>
+      <div class="flex justify-between text-xs mt-1">
+        <span>0W</span>
+        <span class="text-gray-400"><span class="cg-string" cg-alphabet="Ch12-AC" cg-bind="activeChannel" cg-dataType="uint8_t" cg-renderer="#ChannelRenderer">Ch1-A</span></span>
+        <span><span class="cg-number" cg-padding="right" cg-bind="ch->vset * currentMax / 1000000" cg-dataType="uint16_t">140</span><span class="cg-hide">W</span></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="text/c" id="ChannelRenderer" cg-bufferSize="6">
+  buf[0] = 'C';
+  buf[1] = 'h';
+  buf[2] = (val >> 1) + '1';
+  buf[3] = '-';
+  buf[4] = (val & 1) ? 'A' : 'C';
+  buf[5] = 0; // 别忘了写零！
+
+  return buf;
+</script>
+
+<div class="flex flex-col p-1">
+  <div class="flex-1 text-center">扩展信息界面</div>
+  <div class="w-[160px] h-[128px] border-2 border-gray-700 rounded-lg p-1 flex flex-col relative cg-screen" id="ExtendInfoPage">
+    <script type="text/c" class="cg-code">
+      SW3538_Status* ch = &status.channel[activeChannel >> 1];
+    </script>
+
+    <div class="grid grid-cols-2 gap-1">
+      <div class="rounded p-1">
+        <div class="text-xs text-gray-400">输入电压</div>
+        <div class="text-secondary text-sm font-bold"><span class="cg-number" cg-padding="right" cg-bind="ch->vin / 10" cg-dataType="uint16_t">24.00</span><span class="cg-hide">V</span></div>
+      </div>
+
+      <div class="rounded p-1 flex flex-col" style="padding-bottom: 0">
+        <div class="text-xs text-gray-400">温度/风扇</div>
+        <!-- text-red-500 -->
+        <span class="text-secondary text-sm font-bold" ><span class="cg-number" cg-padding="right" cg-bind="ch->chipTemperature" cg-dataType="uint16_t">105.0</span><span class="cg-hide">°C</span></span>
+        <!-- text-red-500 -->
+        <span class="text-secondary text-sm font-bold cg-group" style="line-height: 1" cg-bind="status.fanSpeedSet > 0"><span class="cg-number" cg-padding="right" cg-bind="status.fanSpeed" cg-dataType="uint16_t">1500</span><span class="cg-hide">RPM</span></span>
+      </div>
+
+      <div class="rounded p-1" style="padding-top: 0">
+        <div class="text-xs text-gray-400">充电时间</div>
+        <div class="text-secondary text-sm font-bold"><span class="cg-string" cg-alphabet="0123456789:" cg-renderer="#RenderHMS" cg-bind="status.chargeTime[activeChannel] / COMM_FREQ" cg-dataType="uint32_t">00:01:23</span></div>
+      </div>
+
+      <div class="rounded p-1" style="padding-top: 0">
+        <div class="text-xs text-gray-400">已充容量</div>
+        <div class="text-secondary text-sm font-bold"><span class="cg-number" cg-padding="right" cg-bind="status.energy[activeChannel] / (3600 * 6 * COMM_FREQ)">100.00</span><span class="cg-hide">Wh</span></div>
+      </div>
+    </div>
+
+    <div class="flex justify-between items-center mb-1" style="position: absolute; bottom: -4px; width: 148px">
+      <div class="flex items-center">
+        <i class="text-sm fa fa-usb text-accent mr-1 cg-image" cg-if-1="!= 0|text-gray-700" cg-else="text-accent" cg-bind="ch->connection & 1" cg-dataType="int"></i>
+        <span class="text-sm font-bold">USB-A</span>
+      </div>
+      <div class="flex items-center">
+        <span class="status-indicator mr-1 bg-gray-700 cg-image" style="width: 18px; border-radius: 4px" cg-if-1="!= 0|bg-green-500" cg-else="bg-gray-700" cg-bind="ch->connection & 2" cg-dataType="int"></span>
+        <span class="text-sm font-bold">Type-C</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="text/c" id="RenderHMS" cg-bufferSize="9">
+  // 99:99:99
+  buf[2] = ':';
+  buf[5] = ':';
+  buf[8] = '\0';
+
+  uint32_t i = val, p;
+
+  p = i/36000;
+  buf[0] = p+'0';
+  i -= p * 36000;
+  p = i/3600;
+  buf[1] = p+'0';
+  i -= p * 3600;
+
+  p = i/600;
+  buf[3] = p+'0';
+  i -= p * 600;
+  p = i/60;
+  buf[4] = p+'0';
+  i -= p*60;
+
+  p = i/10;
+  buf[6] = p+'0';
+  i -= p*10;
+  buf[7] = i+'0';
+
+  return buf;
+</script>
+
+<div class="flex flex-col p-1">
+  <div class="flex-1 text-center">功率变化趋势</div>
+  <div class="w-[160px] h-[128px] border-2 border-gray-700 rounded-lg p-1 flex flex-col" id="DiagramScreen">
+    <div class="h-full flex flex-col">
+      <div class="text-xs font-bold text-center mb-1">功率(W)</div>
+      <div class="flex-1 relative">
+        <canvas id="powerChart" width=150 height=80></canvas>
+      </div>
+      <div class="text-xs text-gray-400 flex justify-between mt-1">
+        <div>最高:140.0W</div>
+        <div>平均: 65.0W</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="flex flex-col p-1">
+  <div class="flex-1 text-center">系统设置</div>
+  <div class="w-[160px] h-[128px] border-2 border-gray-700 rounded-lg p-1 flex flex-col" id="ConfigScreen">
+    <div class="h-full overflow-y-auto scrollbar-thin pr-1">
+      <div class="text-xs font-bold text-center mb-2">系统配置</div>
+
+      <div class="space-y-2">
+        <!-- 配置项1 -->
+        <div class="bg-gray-800 rounded p-1">
+          <div class="text-xs text-gray-400">自动关机时间</div>
+          <div class="flex justify-between items-center">
+            <span class="text-sm font-bold">30分钟</span>
+            <i class="fa fa-chevron-right text-xs text-gray-500"></i>
+          </div>
+        </div>
+
+        <!-- 配置项2 -->
+        <div class="bg-gray-800 rounded p-1">
+          <div class="text-xs text-gray-400">风扇配置</div>
+          <div class="flex justify-between items-center">
+            <span class="text-sm font-bold">60°C</span>
+            <i class="fa fa-chevron-right text-xs text-gray-500"></i>
+          </div>
+        </div>
+
+        <!-- 配置项5 -->
+        <div class="bg-gray-800 rounded p-1">
+          <div class="text-xs text-gray-400">屏幕亮度</div>
+          <div class="flex justify-between items-center">
+            <span class="text-sm font-bold">中等</span>
+            <i class="fa fa-chevron-right text-xs text-gray-500"></i>
+          </div>
+        </div>
+
+        <!-- 配置项6 -->
+        <div class="bg-gray-800 rounded p-1">
+          <div class="text-xs text-gray-400">语言设置</div>
+          <div class="flex justify-between items-center">
+            <span class="text-sm font-bold">简体中文</span>
+            <i class="fa fa-chevron-right text-xs text-gray-500"></i>
+          </div>
+        </div>
+
+        <!-- 配置项7 -->
+        <div class="bg-gray-800 rounded p-1">
+          <div class="text-xs text-gray-400">恢复出厂设置</div>
+          <div class="flex justify-between items-center">
+            <span class="text-sm font-bold text-red-500">重置</span>
+            <i class="fa fa-chevron-right text-xs text-gray-500"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<div class="flex flex-col p-1">
+  <div class="flex-1 text-center">快充参数设置</div>
+  <div class="w-[160px] h-[128px] border-2 border-gray-700 rounded-lg p-1 flex flex-col" id="ChargeConfigScreen">
+
+    <div class="h-full overflow-y-auto scrollbar-thin pr-1">
+      <div class="text-xs font-bold text-center mb-2">通道1参数配置</div>
+
+      <div class="bg-gray-800 rounded p-1">
+        <div class="text-xs text-gray-400">协议开关</div>
+        <div class="flex justify-between items-center">
+          <span class="text-sm font-bold">QC PD PPS</span>
+          <i class="fa fa-chevron-right text-xs text-gray-500"></i>
+        </div>
+      </div>
+
+      <div class="bg-gray-800 rounded p-1">
+        <div class="text-xs text-gray-400">功率限制</div>
+        <div class="flex justify-between items-center">
+          <span class="text-sm font-bold">140W</span>
+          <i class="fa fa-undo text-xs text-gray-500"></i>
+        </div>
+      </div>
+
+      <div class="bg-gray-800 rounded p-1">
+        <div class="text-xs text-gray-400">PD 9V限流</div>
+        <div class="flex justify-between items-center">
+          <span class="text-sm font-bold">5A</span>
+          <i class="fa fa-undo text-xs text-gray-500"></i>
+        </div>
+      </div>
+
+      <div class="bg-gray-800 rounded p-1">
+        <div class="text-xs text-gray-400">PD 12V限流</div>
+        <div class="flex justify-between items-center">
+          <span class="text-sm font-bold">5A</span>
+          <i class="fa fa-undo text-xs text-gray-500"></i>
+        </div>
+      </div>
+
+      <div class="bg-gray-800 rounded p-1">
+        <div class="text-xs text-gray-400">PD 15V限流</div>
+        <div class="flex justify-between items-center">
+          <span class="text-sm font-bold">5A</span>
+          <i class="fa fa-undo text-xs text-gray-500"></i>
+        </div>
+      </div>
+
+      <div class="bg-gray-800 rounded p-1">
+        <div class="text-xs text-gray-400">PD 20V限流</div>
+        <div class="flex justify-between items-center">
+          <span class="text-sm font-bold">7A</span>
+          <i class="fa fa-undo text-xs text-gray-500"></i>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<div class="flex flex-col p-1">
+  <div class="flex-1 text-center">散热参数设置</div>
+  <div class="w-[160px] h-[128px] border-2 border-gray-700 rounded-lg p-1 flex flex-col" id="FanConfigScreen">
+
+    <div class="h-full overflow-y-auto scrollbar-thin pr-1">
+      <div class="text-xs font-bold text-center mb-2">热管理参数</div>
+
+      <div class="bg-gray-800 rounded p-1">
+        <div class="text-xs text-gray-400">启停温度</div>
+        <div class="flex justify-between items-center">
+          <span class="text-sm font-bold">60°C</span>
+          <span class="text-sm font-bold">50°C</span>
+        </div>
+      </div>
+
+      <div class="bg-gray-800 rounded p-1">
+        <div class="text-xs text-gray-400">PWM步进/°C</div>
+        <div class="flex justify-between items-center">
+          <span class="text-sm font-bold">20%</span>
+          <span class="text-sm font-bold">2%</span>
+        </div>
+      </div>
+
+      <div class="bg-gray-800 rounded p-1">
+        <div class="text-xs text-gray-400">跳闸温度</div>
+        <div class="flex justify-between items-center">
+          <span class="text-sm font-bold">105°C</span>
+          <i class="fa fa-undo text-xs text-gray-500"></i>
+        </div>
+      </div>
+
+      <div class="bg-gray-800 rounded p-1">
+        <div class="text-xs text-gray-400">MOS工作频率</div>
+        <div class="flex justify-between items-center">
+          <span class="text-sm text-gray-500 font-bold">100k</span>
+          <span class="text-sm text-gray-500 font-bold">250k</span>
+          <span class="text-sm font-bold">500k</span>
+        </div>
+      </div>
+
+      <div class="bg-gray-800 rounded p-1">
+        <div class="text-xs text-gray-400">启用PFM调制</div>
+        <div class="flex justify-between items-center">
+          <span class="text-sm font-bold">Yes</span>
+          <span class="text-sm text-gray-500 font-bold">No</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="../CGUI/daemon.js" async defer></script>
+<!--script>
+  // 页面加载完成后初始化
+  document.addEventListener('DOMContentLoaded', function() {
+    // 初始化图表
+    const ctx = document.getElementById('powerChart').getContext('2d');
+    const powerChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: Array.from({length: 12}, (_, i) => i * 5),
+        datasets: [{
+          data: [0, 5.2, 10.8, 15.6, 18.9, 22.5, 25.8, 28.5, 26.2, 22.8, 18.5, 13.8],
+          borderColor: '#3b82f6',
+          borderWidth: 1,
+          pointRadius: 0,
+          tension: 0.4
+        }]
+      },
+      options: {
+        scales: {
+          x: {
+            ticks: {
+              display: false,
+            }
+          },
+          y: {
+            beginAtZero: true,
+            ticks: {
+              display: false,
+            }
+          }
+        }
+      }
+    });
+  });
+</script-->
+</body>
+</html>

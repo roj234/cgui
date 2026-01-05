@@ -1,0 +1,108 @@
+<title>单色字库生成H5版</title>
+<div style="width: 800px; margin: auto">
+<h1 style="text-align:center">单色字库生成H5版</h1>
+font=<input type="text" placeholder="字体" value="宋体" id="font" />
+size=<input type="number" min=4 max=64 placeholder="字号" value="16" id="font_size" /><br>
+bin=<input type="number" min=1 max=254 placeholder="二值化阈值" value="128" id="font_bin" />
+w=<input type="number" min=4 max=64 placeholder="宽度" value="16" id="font_w" />
+h=<input type="number" min=4 max=64 placeholder="高度" value="16" id="font_h" />
+noascii=<input type="checkbox" id="noalpha" />
+<input type="button" value="生成" id="gen" /><br>
+<textarea id="text" style="resize: none; width: 600px; height: 400px">
+123345567890qwertyuiop[]-=\`asdfghjkl;'/.,mnbvcxzQWERTYUIOPLKMJNHBGVFCDXSZA~!@#$%^&*()_+{}|:">? <
+</textarea><br>
+<canvas width="32" height="32" title="渲染" id="pix" style="background: black"></canvas>
+<canvas width="240" height="120" title="预览" id="view" style="background: black"></canvas><br>
+<textarea id="output" style="resize: none; width: 600px; height: 600px"></textarea>
+</div>
+
+
+<script src="../node_modules/gbk.js/dist/gbk.js"></script>
+<script>
+function G(i) {return document.getElementById(i)}
+
+const ctx = G("pix").getContext("2d", { alpha: false });
+ctx.textAlign = "left";
+ctx.textBaseline = "top";
+ctx.fillStyle = "#ffffff";
+
+const rctx = G("view").getContext("2d");
+
+const output = G("output");
+let out;
+
+async function delay(ms) {
+  return new Promise((ok) => {
+    requestAnimationFrame(ok);
+  });
+}
+
+async function render() {
+  const pix = parseInt(G("font_size").value);
+  const width = parseInt(G("font_w").value);
+  const height = parseInt(G("font_h").value);
+  const bin = parseInt(G("font_bin").value);
+  const font = `${pix}px "${G("font").value}"`;
+  ctx.font = font;
+
+  //先去重，然后按照uint16排序
+  let str = G("text").value;
+  if (G("noalpha").checked) str = str.replaceAll(/[\n \x00-\x7F]/g, "");
+  else  str = str.replaceAll(/\s/g, "");
+  const slot = {};
+  for(const c of str) {
+    const arr = GBK.encode(c);
+    slot[c] = (arr[1] << 16) | arr[0];
+  }
+  const text = Object.keys(slot).sort((a, b) => (slot[a] - slot[b])).join("");
+
+  out = "";
+  let rc_x = 0, rc_y = 0;
+  output.value = "{\n";
+  for(let i = 0; i < text.length; i++) {
+    const c = text.charAt(i);
+    ctx.fillText(c,0,0);
+    const img = ctx.getImageData(0,0,width,height);
+    encode(c,img.data,bin);
+
+    rctx.putImageData(img,rc_x,rc_y);
+    if ((rc_x += width) >= rctx.canvas.width) {
+      rc_x = 0;
+      rc_y += height;
+    }
+    if (rc_y >= rctx.canvas.height) {
+      rc_y = 0;
+    }
+
+    //await delay(1);
+    ctx.clearRect(0,0,width,height);
+  }
+
+  output.setRangeText(out,output.value.length,output.value.length);
+  out = "";
+}
+
+function encode(c,img,bin) {
+  out += (`{"${c}",`);
+  const buf = new Uint32Array(img.buffer);
+  let repeatCount = 0;
+  let prevIsBlack = true;
+
+  let bit = 0, pos = 0;
+  for(let i in buf) {
+    const yes = buf[i]&0xff > bin;
+    buf[i] = yes ? 0xffffe0e0 : 0x000000;
+    bit |= yes << pos++;
+    if (pos == 8) {
+      out += (bit+',');
+      bit = 0;
+      pos = 0;
+    }
+  }
+  out += (`},\n`);
+}
+
+  render();
+  G("text").onchange = render;
+  G("gen").onclick = render;
+</script>
